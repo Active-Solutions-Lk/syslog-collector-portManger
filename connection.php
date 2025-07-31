@@ -9,3 +9,4 @@ $remote_db = new mysqli($host, $username, $password, $database);
 if ($remote_db->connect_error) {
     die("Connection failed: {$remote_db->connect_error}");
 }
+?>

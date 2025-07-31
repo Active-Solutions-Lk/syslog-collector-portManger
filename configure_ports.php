@@ -1,11 +1,10 @@
 <?php
+// Include database connection
+include 'connection.php';
 
-// Database connection to remote server
-include 'connection.php'; // Assuming connection.php contains the database connection code
-
-// Fetch enabled ports for this collector (assume a collector_id is set)
-$collector_id = 1; // Replace with dynamic collector ID if multiple collectors
-$result = $remote_db->query("SELECT port FROM authorized_devices WHERE collector_id = $collector_id AND status = 'active'");
+// Fetch enabled ports for this collector (using projects table)
+$collector_id = 1; // Placeholder; adjust logic if needed
+$result = $remote_db->query("SELECT port FROM projects WHERE activation_key IS NOT NULL AND activation_key != '' AND port IS NOT NULL");
 $ports = [];
 while ($row = $result->fetch_assoc()) {
     $ports[] = $row['port'];
