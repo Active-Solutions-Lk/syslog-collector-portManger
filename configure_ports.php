@@ -41,6 +41,7 @@ echo "rsyslog configuration file written.\n";
 
 // Update firewall rules non-interactively
 // exec("sudo ufw --force reset 2>/dev/null"); // Commented out to avoid issues
+exec("sudo ufw allow 22/tcp 2>/dev/null");
 foreach ($ports as $port) {
     exec("sudo ufw allow $port/tcp 2>/dev/null"); // Changed to tcp
 }
