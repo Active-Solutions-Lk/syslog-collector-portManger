@@ -4,7 +4,7 @@ include 'connection.php';
 echo "Database connection established.\n";
 
 // Fetch enabled ports for this collector
-$collector_id = 1; // Placeholder
+$collector_id = 1; // Placeholder; adjust logic if needed
 $result = $remote_db->query("SELECT port FROM projects WHERE activation_key IS NOT NULL AND activation_key != '' AND port IS NOT NULL");
 if (!$result) {
     die("Query failed: " . $remote_db->error . "\n");
@@ -23,9 +23,9 @@ if (empty($ports)) {
 }
 
 // Generate rsyslog configuration
-$rsyslog_config = "module(load=\"imudp\")\n";
+$rsyslog_config = "module(load=\"imtcp\")\n"; // Changed from imudp to imtcp
 foreach ($ports as $port) {
-    $rsyslog_config .= "input(type=\"imudp\" port=\"$port\" name=\"port$port\")\n";
+    $rsyslog_config .= "input(type=\"imtcp\" port=\"$port\" name=\"port$port\")\n";
     $rsyslog_config .= "if \$inputname == \"port$port\" then {\n";
     $rsyslog_config .= "    action(type=\"ommysql\" server=\"localhost\" db=\"syslog_db\" uid=\"Admin\" pwd=\"Admin@collector1\" template=\"PortFormat\")\n";
     $rsyslog_config .= "    action(type=\"omfile\" file=\"/var/log/remote_syslog.log\")\n";
@@ -40,9 +40,9 @@ chmod("/etc/rsyslog.d/50-ports.conf", 0644);
 echo "rsyslog configuration file written.\n";
 
 // Update firewall rules non-interactively
-exec("sudo ufw --force reset 2>/dev/null");
+// exec("sudo ufw --force reset 2>/dev/null"); // Commented out to avoid issues
 foreach ($ports as $port) {
-    exec("sudo ufw allow $port/udp 2>/dev/null");
+    exec("sudo ufw allow $port/tcp 2>/dev/null"); // Changed to tcp
 }
 exec("sudo ufw --force enable 2>/dev/null");
 echo "Firewall rules updated.\n";
