@@ -22,16 +22,22 @@ if (empty($ports)) {
     die("No active ports found in the projects table.\n");
 }
 
-// Read existing MySQL admin password from setup_syslog_collector.sh configuration
-// Assuming the password is stored in a predictable location or passed via environment variable
-$mysql_admin_pw = getenv('MYSQL_ADMIN_PW') ?: 'Admin@collector1'; // Fallback to default if not set
+// Read existing MySQL admin password from environment variable
+$mysql_admin_pw = getenv('MYSQL_ADMIN_PW') ?: 'Admin@collector1'; // Fallback to default
+$exclude_host = getenv('EXCLUDE_HOST') ?: 'VM-748b2572-5bb2-499a-a4c8-17b6f7e01b67'; // Fallback
 
-// Generate rsyslog configuration to append to 50-mysql.conf
-$rsyslog_config = "\n# Dynamic TCP port configuration\n";
-$rsyslog_config .= "module(load=\"imtcp\")\n";
+// Check if imtcp module is already loaded in 50-mysql.conf
+$existing_config = file_get_contents("/etc/rsyslog.d/50-mysql.conf");
+$rsyslog_config = "";
+if (strpos($existing_config, 'module(load="imtcp")') === false) {
+    $rsyslog_config .= "\n# Dynamic TCP port configuration\n";
+    $rsyslog_config .= "module(load=\"imtcp\")\n";
+}
+
+// Generate rsyslog configuration for dynamic ports
 foreach ($ports as $port) {
     $rsyslog_config .= "input(type=\"imtcp\" port=\"$port\" name=\"port$port\")\n";
-    $rsyslog_config .= "if \$inputname == \"port$port\" and \$fromhost != \"" . getenv('EXCLUDE_HOST') . "\" then {\n";
+    $rsyslog_config .= "if \$inputname == \"port$port\" and \$fromhost != \"$exclude_host\" then {\n";
     $rsyslog_config .= "    action(type=\"ommysql\" server=\"localhost\" db=\"syslog_db\" uid=\"Admin\" pwd=\"$mysql_admin_pw\" template=\"SqlFormat\")\n";
     $rsyslog_config .= "    action(type=\"omfile\" file=\"/var/log/remote_syslog.log\")\n";
     $rsyslog_config .= "}\n";
