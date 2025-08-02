@@ -22,28 +22,30 @@ if (empty($ports)) {
     die("No active ports found in the projects table.\n");
 }
 
-// Generate rsyslog configuration
-$rsyslog_config = "module(load=\"imtcp\")\n"; // Changed from imudp to imtcp
+// Read existing MySQL admin password from setup_syslog_collector.sh configuration
+// Assuming the password is stored in a predictable location or passed via environment variable
+$mysql_admin_pw = getenv('MYSQL_ADMIN_PW') ?: 'Admin@collector1'; // Fallback to default if not set
+
+// Generate rsyslog configuration to append to 50-mysql.conf
+$rsyslog_config = "\n# Dynamic TCP port configuration\n";
+$rsyslog_config .= "module(load=\"imtcp\")\n";
 foreach ($ports as $port) {
     $rsyslog_config .= "input(type=\"imtcp\" port=\"$port\" name=\"port$port\")\n";
-    $rsyslog_config .= "if \$inputname == \"port$port\" then {\n";
-    $rsyslog_config .= "    action(type=\"ommysql\" server=\"localhost\" db=\"syslog_db\" uid=\"Admin\" pwd=\"Admin@collector1\" template=\"PortFormat\")\n";
+    $rsyslog_config .= "if \$inputname == \"port$port\" and \$fromhost != \"" . getenv('EXCLUDE_HOST') . "\" then {\n";
+    $rsyslog_config .= "    action(type=\"ommysql\" server=\"localhost\" db=\"syslog_db\" uid=\"Admin\" pwd=\"$mysql_admin_pw\" template=\"SqlFormat\")\n";
     $rsyslog_config .= "    action(type=\"omfile\" file=\"/var/log/remote_syslog.log\")\n";
     $rsyslog_config .= "}\n";
 }
-$rsyslog_config .= "template(name=\"PortFormat\" type=\"string\" string=\"INSERT INTO remote_logs (received_at, hostname, facility, received_port, message) VALUES ('%timegenerated:::date-mysql%', '%hostname%', '%syslogfacility-text%', %$!inputname%, '%msg%')\")\n";
-echo "rsyslog configuration generated.\n";
 
-// Write to rsyslog configuration
-file_put_contents("/etc/rsyslog.d/50-ports.conf", $rsyslog_config);
-chmod("/etc/rsyslog.d/50-ports.conf", 0644);
-echo "rsyslog configuration file written.\n";
+// Append to existing /etc/rsyslog.d/50-mysql.conf
+file_put_contents("/etc/rsyslog.d/50-mysql.conf", $rsyslog_config, FILE_APPEND);
+chmod("/etc/rsyslog.d/50-mysql.conf", 0644);
+echo "rsyslog configuration appended to 50-mysql.conf.\n";
 
 // Update firewall rules non-interactively
-// exec("sudo ufw --force reset 2>/dev/null"); // Commented out to avoid issues
 exec("sudo ufw allow 22/tcp 2>/dev/null");
 foreach ($ports as $port) {
-    exec("sudo ufw allow $port/tcp 2>/dev/null"); // Changed to tcp
+    exec("sudo ufw allow $port/tcp 2>/dev/null");
 }
 exec("sudo ufw --force enable 2>/dev/null");
 echo "Firewall rules updated.\n";
