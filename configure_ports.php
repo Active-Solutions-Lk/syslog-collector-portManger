@@ -1,6 +1,12 @@
 <?php
-// Include database connection
-include 'connection.php';
+// Database connection to remote_admin
+$remote_db_ip = getenv('REMOTE_DB_IP') ?: die("Error: REMOTE_DB_IP not set.\n");
+$remote_db_user = getenv('REMOTE_DB_USER') ?: die("Error: REMOTE_DB_USER not set.\n");
+$remote_db_pw = getenv('REMOTE_DB_PW') ?: die("Error: REMOTE_DB_PW not set.\n");
+$remote_db = new mysqli($remote_db_ip, $remote_db_user, $remote_db_pw, 'remote_admin');
+if ($remote_db->connect_error) {
+    die("Connection failed: " . $remote_db->connect_error . "\n");
+}
 echo "Database connection established.\n";
 
 // Fetch enabled ports for this collector
@@ -22,9 +28,9 @@ if (empty($ports)) {
     die("No active ports found in the projects table.\n");
 }
 
-// Read existing MySQL admin password from environment variable
-$mysql_admin_pw = getenv('MYSQL_ADMIN_PW') ?: 'Admin@collector1'; // Fallback
-$exclude_host = getenv('EXCLUDE_HOST') ?: 'active-virtual-machine'; // Fallback
+// Read existing MySQL admin password and exclude host
+$mysql_admin_pw = 'Admin@collector1'; // Hardcoded for local syslog_db
+$exclude_host = getenv('EXCLUDE_HOST') ?: die("Error: EXCLUDE_HOST not set.\n");
 
 // Check if imtcp module is already loaded in 50-mysql.conf
 $existing_config = file_get_contents("/etc/rsyslog.d/50-mysql.conf");
