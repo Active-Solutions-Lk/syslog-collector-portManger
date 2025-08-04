@@ -23,8 +23,8 @@ if (empty($ports)) {
 }
 
 // Read existing MySQL admin password from environment variable
-$mysql_admin_pw = getenv('MYSQL_ADMIN_PW') ?: 'Admin@collector1'; // Fallback to default
-$exclude_host = getenv('EXCLUDE_HOST') ?: 'VM-748b2572-5bb2-499a-a4c8-17b6f7e01b67'; // Fallback
+$mysql_admin_pw = getenv('MYSQL_ADMIN_PW') ?: 'Admin@collector1'; // Fallback
+$exclude_host = getenv('EXCLUDE_HOST') ?: 'active-virtual-machine'; // Fallback
 
 // Check if imtcp module is already loaded in 50-mysql.conf
 $existing_config = file_get_contents("/etc/rsyslog.d/50-mysql.conf");
@@ -47,6 +47,12 @@ foreach ($ports as $port) {
 file_put_contents("/etc/rsyslog.d/50-mysql.conf", $rsyslog_config, FILE_APPEND);
 chmod("/etc/rsyslog.d/50-mysql.conf", 0644);
 echo "rsyslog configuration appended to 50-mysql.conf.\n";
+
+// Remove conflicting 50-ports.conf if it exists
+if (file_exists("/etc/rsyslog.d/50-ports.conf")) {
+    exec("sudo rm /etc/rsyslog.d/50-ports.conf");
+    echo "Removed conflicting 50-ports.conf.\n";
+}
 
 // Update firewall rules non-interactively
 exec("sudo ufw allow 22/tcp 2>/dev/null");
